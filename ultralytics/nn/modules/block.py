@@ -1337,7 +1337,7 @@ class Attention(nn.Module):
         self.proj = Conv(dim, dim, 1, act=False)
         self.pe = Conv(dim, dim, 3, 1, g=dim, act=False)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_original(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the Attention module.
 
@@ -1359,7 +1359,24 @@ class Attention(nn.Module):
         x = (v @ attn.transpose(-2, -1)).view(B, C, H, W) + self.pe(v.reshape(B, C, H, W))
         x = self.proj(x)
         return x
-
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print(f"{x.shape = }")
+        B, C, H, W = x.shape
+        N = H * W
+        qkv = self.qkv(x)
+        q, k, v = qkv.view(B, self.num_heads, self.key_dim * 2 + self.head_dim, N).split(
+            [self.key_dim, self.key_dim, self.head_dim], dim=2
+        )
+        attn = (q.transpose(-2, -1) @ k) * self.scale
+        attn = attn.permute(0, 3, 1, 2).contiguous()  # CHW2HWC like
+        max_attn = attn.max(dim=1, keepdim=True).values 
+        exp_attn = torch.exp(attn - max_attn)
+        sum_attn = exp_attn.sum(dim=1, keepdim=True)
+        attn = exp_attn / sum_attn
+        attn = attn.permute(0, 2, 3, 1).contiguous()  # HWC2CHW like
+        x = (v @ attn.transpose(-2, -1)).view(B, C, H, W) + self.pe(v.reshape(B, C, H, W))
+        x = self.proj(x)
+        return x
 
 class PSABlock(nn.Module):
     """

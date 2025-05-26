@@ -111,7 +111,7 @@ class Detect(nn.Module):
             self.one2one_cv2 = copy.deepcopy(self.cv2)
             self.one2one_cv3 = copy.deepcopy(self.cv3)
 
-    def forward(self, x: List[torch.Tensor]) -> Union[List[torch.Tensor], Tuple]:
+    def forward_original(self, x: List[torch.Tensor]) -> Union[List[torch.Tensor], Tuple]:
         """Concatenate and return predicted bounding boxes and class probabilities."""
         if self.end2end:
             return self.forward_end2end(x)
@@ -122,6 +122,13 @@ class Detect(nn.Module):
             return x
         y = self._inference(x)
         return y if self.export else (y, x)
+    def forward(self, x):
+        result = []
+        for i in range(self.nl):
+            result.append(self.cv3[i](x[i]).permute(0, 2, 3, 1).contiguous())
+            result.append(self.cv2[i](x[i]).permute(0, 2, 3, 1).contiguous())
+        return result
+
 
     def forward_end2end(self, x: List[torch.Tensor]) -> Union[dict, Tuple]:
         """
