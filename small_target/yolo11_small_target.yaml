@@ -1,0 +1,41 @@
+# YOLOv11 nano optimized for small moving targets (max 2 detections, single class)
+# Parameters: 2.6M, GFLOPs: 6.5
+
+# Backbone - Lightweight but maintains spatial resolution
+backbone:
+  - [-1, 1, Conv, [32, 3, 2]]  # 0-P1/2
+  - [-1, 1, Conv, [64, 3, 2]]  # 1-P2/4
+  - [-1, 1, C2f, [64, 1, True]]
+  - [-1, 1, Conv, [96, 3, 2]]  # 3-P3/8 (reduced from 128)
+  - [-1, 2, C2f, [96, 1, True]]
+  - [-1, 1, Conv, [192, 3, 2]]  # 5-P4/16 (reduced from 256)
+  - [-1, 2, C2f, [192, 1, True]]
+  - [-1, 1, Conv, [384, 3, 2]]  # 7-P5/32 (reduced from 512)
+  - [-1, 1, C2f, [384, 1, True]]
+  - [-1, 1, SPPF, [384, 5]]  # 9
+
+# Head - Enhanced for small targets with P2 detection
+head:
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
+  - [[-1, 6], 1, Concat, [1]]  # cat backbone P4
+  - [-1, 1, C2f, [192, 1]]  # 12
+
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
+  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3
+  - [-1, 1, C2f, [96, 1]]  # 15 (P3/8-small)
+
+  # Add P2 detection layer for 64x64 targets
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
+  - [[-1, 2], 1, Concat, [1]]  # cat backbone P2
+  - [-1, 1, C2f, [64, 1]]  # 18 (P2/4-tiny) - Key for small targets
+
+  - [15, 1, Conv, [96, 3, 2]]
+  - [[-1, 12], 1, Concat, [1]]  # cat head P4
+  - [-1, 1, C2f, [192, 1]]  # 21 (P4/16-medium)
+
+  - [21, 1, Conv, [192, 3, 2]]
+  - [[-1, 9], 1, Concat, [1]]  # cat head P5
+  - [-1, 1, C2f, [384, 1]]  # 24 (P5/32-large)
+
+  # 4-scale detection optimized for single class
+  - [[18, 15, 21, 24], 1, Detect, [1]]  # Single class detection

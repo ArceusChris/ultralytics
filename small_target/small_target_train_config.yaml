@@ -1,0 +1,56 @@
+# Training configuration optimized for small moving targets
+model: yolo11_small_target.yaml
+data: datasets.yaml  # Your dataset config
+
+# Basic training parameters
+epochs: 150
+patience: 25
+batch: 32
+imgsz: 416  # Optimal for 64x64 targets while maintaining speed
+workers: 8
+device: ''  # Auto-detect
+
+# Single class configuration
+single_cls: true  # Enable single class mode
+nc: 1
+
+# Speed and accuracy balance
+conf: 0.25
+iou: 0.45
+max_det: 2  # Limit to maximum 2 detections
+
+# Optimizer settings for fast convergence
+optimizer: AdamW
+lr0: 0.002  # Higher learning rate for faster training
+lrf: 0.01
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 3.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# Data augmentation optimized for moving small targets
+hsv_h: 0.015  # Minimal hue augmentation
+hsv_s: 0.4    # Moderate saturation
+hsv_v: 0.3    # Moderate value
+degrees: 8.0   # Small rotation for moving targets
+translate: 0.1 # 10% translation
+scale: 0.3     # 30% scale variation for distance changes
+shear: 2.0     # Minimal shear
+perspective: 0.0  # No perspective transformation for speed
+flipud: 0.0    # No vertical flip
+fliplr: 0.5    # 50% horizontal flip
+mosaic: 0.8    # Reduced mosaic for stability
+mixup: 0.1     # Light mixup
+copy_paste: 0.0
+
+# Loss function optimization for small targets
+box: 7.5      # Box loss gain
+cls: 0.5      # Class loss gain (reduced for single class)
+dfl: 1.5      # DFL loss gain
+
+# Validation settings
+val: true
+plots: true
+save: true
+save_period: 50  # Save checkpoint every 50 epochs
